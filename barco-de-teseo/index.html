@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>El barco de Teseo · Cuaderno de pistas</title>
+  <meta name="theme-color" content="#efe5cf">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Teseo">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <div class="marca">S</div>
+    <div>
+      <h1>El barco de Teseo</h1>
+      <div class="sub">Cuaderno de pistas</div>
+    </div>
+    <button class="pag-chip" id="chipPagina" aria-label="Cambiar página actual">p. —</button>
+  </header>
+
+  <main id="vista" aria-live="polite"></main>
+
+  <nav class="tabs" aria-label="Secciones">
+    <button data-tab="lectura" class="activo"><span class="ico">📖</span>Lectura</button>
+    <button data-tab="pistas"><span class="ico">🔍</span>Pistas</button>
+    <button data-tab="preguntar"><span class="ico">✒️</span>Preguntar</button>
+    <button data-tab="guia"><span class="ico">🧭</span>Guía</button>
+    <button data-tab="ajustes"><span class="ico">⚙️</span>Ajustes</button>
+  </nav>
+
+  <div id="modal" class="modal-fondo oculto" role="dialog" aria-modal="true"></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
