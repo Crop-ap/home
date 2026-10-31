@@ -1,5 +1,5 @@
 import {
-  LIBRO, CAPITULOS, INSERTOS, TINTAS, PERSONAJES, CANDIDATOS, CRONOLOGIA, CODIGOS,
+  LIBRO, CAPITULOS, INSERTOS, TINTAS, PERSONAJES, CANDIDATOS, CRONOLOGIA, CODIGOS, RECURSOS,
   capituloDePagina, insertosCerca,
 } from "./data.js";
 
@@ -312,7 +312,7 @@ async function renderPreguntar() {
 /* ───────────── Vista: Guía ───────────── */
 const SECCIONES = [
   ["capitulos", "Capítulos"], ["insertos", "Insertos"], ["tintas", "Tintas"], ["personajes", "Personajes"],
-  ["codigos", "Cifrados"], ["candidatos", "¿Quién es Straka?"], ["cronologia", "Cronología"], ["leer", "Cómo leerlo"],
+  ["codigos", "Cifrados"], ["candidatos", "¿Quién es Straka?"], ["cronologia", "Cronología"], ["leer", "Cómo leerlo"], ["recursos", "Recursos"],
 ];
 function renderGuia() {
   const p = pagina();
@@ -354,6 +354,10 @@ function renderGuia() {
       <li>Vuelve al inicio y lee los márgenes <b>por color</b>: primero azul y negro, luego naranja y verde, luego morado y rojo, y al final el negro de los dos.</li>
       <li>Lee cada inserto cuando las notas lo mencionen, no al llegar a su página.</li></ol>
       <p class="muted small">No es obligatorio: hay quien lo lee todo a la vez, página por página. Lo importante es no perder el orden temporal de las tintas.</p></div>`;
+  }
+  if (guiaSec === "recursos") {
+    cuerpo = `<p class="muted">Webs de lectores para profundizar. Ojo: pueden contener spoilers y teorías sobre Straka.</p>` +
+      RECURSOS.map((r) => `<a class="ficha" style="display:block;color:inherit;text-decoration:none" href="${esc(r.url)}" target="_blank" rel="noopener"><b>${esc(r.nombre)} ↗</b><p class="small">${esc(r.desc)}</p></a>`).join("");
   }
   vista.innerHTML = `<h2>Guía del libro</h2>
     <div class="segmentos">${SECCIONES.map(([id, n]) => `<button data-sec="${id}" class="${guiaSec === id ? "activo" : ""}">${n}</button>`).join("")}</div>

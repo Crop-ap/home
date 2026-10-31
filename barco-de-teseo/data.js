@@ -208,26 +208,27 @@ export const CAPITULOS = [
   },
 ];
 
-// Fuente de páginas: lista comunitaria de insertos (wiki S., Fandom), cruzada con el conteo
-// de 22 insertos de los catálogos de biblioteca. Descripciones originales.
+// Fuente de páginas: lista comunitaria de insertos (wiki S., Fandom), cruzada con
+// elbarcodestraka.wordpress.com/insertos (coinciden las 22 ubicaciones) y con los catálogos
+// de biblioteca. Descripciones originales.
 export const INSERTOS = [
   { pag: "vi–vii", desde: 0, hasta: 2, tipo: "Carta", titulo: "Carta de Straka a Herr Grahn (17 de agosto de 1928)", desc: "Carta atribuida a Straka. Es uno de los pocos documentos «de su puño» y sirve para discutir su estilo, su idioma y su identidad." },
   { pag: "10–11", desde: 10, hasta: 11, tipo: "Nota", titulo: "Lista de acusaciones contra Straka", desc: "Escrita en papel de Pollard State University. Repasa los crímenes y actos de sabotaje que la leyenda atribuye a Straka." },
-  { pag: "20–21", desde: 20, hasta: 21, tipo: "Recorte", titulo: "Reseña de un libro que menciona «El libro de S»", desc: "Recorte que conecta la investigación de Jen y Eric con una tradición antigua alrededor del símbolo S." },
+  { pag: "20–21", desde: 20, hasta: 21, tipo: "Artículo", titulo: "Artículo de la «Toronto Review» sobre el incendio de San Tadeo de la Tejera", desc: "Texto académico sobre un incendio de 1759 que destruyó una biblioteca singular y que menciona un «Libro de S». Conecta el símbolo S con una tradición muy anterior a Straka." },
   { pag: "32–33", desde: 32, hasta: 33, tipo: "Periódico", titulo: "«The Daily Pronghorn», 8 de enero de 2012 (pp. 1 y 2)", desc: "Periódico estudiantil de la universidad. Sitúa en el presente los hechos del campus que comentan Jen y Eric." },
   { pag: "54–55", desde: 54, hasta: 55, tipo: "Telegrama", titulo: "Telegrama de Straka a Karst & Son", desc: "Straka exige a su editorial que contrate a Caldeira como traductora. Es clave para entender el vínculo entre los dos." },
   { pag: "68–69", desde: 68, hasta: 69, tipo: "Recorte", titulo: "Noticia del suicidio de Václav Straka (31 de octubre de 1910)", desc: "Un obrero llamado Václav Straka se arroja de un puente en Praga y su cuerpo no aparece. Alimenta la teoría de que el nombre «Straka» fue tomado de él." },
   { pag: "86–87", desde: 86, hasta: 87, tipo: "Nota", titulo: "Nota de Jean-Bernard Desjardins a Eric", desc: "El veterano investigador francés le habla a Eric de unos papeles que le dejó en custodia." },
   { pag: "100–101", desde: 100, hasta: 101, tipo: "Nota", titulo: "Nota de Jen a Eric: «el día que desaparecí»", desc: "Jen cuenta que desapareció cinco o seis horas y menciona su ruptura con Jacob. Abre uno de los misterios personales del libro." },
-  { pag: "112–113", desde: 112, hasta: 113, tipo: "Postal", titulo: "Postal desde Brasil (13/04/2012), firmada «E-»", desc: "Primera de varias postales que Eric envía desde Brasil siguiendo el rastro de Caldeira." },
-  { pag: "130–131", desde: 130, hasta: 131, tipo: "Foto", titulo: "Fotografía de una gruta", desc: "Imagen ligada a la gruta de la novela y a la investigación sobre los lugares reales detrás del libro." },
-  { pag: "178–179", desde: 178, hasta: 179, tipo: "Postal", titulo: "Postal desde Brasil (15/04/2012), firmada «E-»", desc: "Eric sigue el viaje por el nordeste de Brasil." },
-  { pag: "190–191", desde: 190, hasta: 191, tipo: "Postal", titulo: "Postal desde Brasil (18/04/2012), firmada «E-»", desc: "Eric se acerca a la pista de Caldeira." },
-  { pag: "192–193", desde: 192, hasta: 193, tipo: "Postal", titulo: "Postal desde Brasil (19 de abril), firmada «E-»", desc: "Más avances del viaje. Lee las postales en orden de fecha." },
-  { pag: "200–201", desde: 200, hasta: 201, tipo: "Postal", titulo: "Postal desde Brasil (matasellos 21/4/2012), firmada «E-»", desc: "Última postal del viaje." },
+  { pag: "112–113", desde: 112, hasta: 113, tipo: "Postal", titulo: "Postal desde Lençóis, Brasil (13/04/2012), firmada «E-»", desc: "Primera de las postales que Eric envía desde Brasil siguiendo el rastro de Caldeira." },
+  { pag: "130–131", desde: 130, hasta: 131, tipo: "Foto", titulo: "Fotografía de una cueva con el símbolo S", desc: "Une la cueva de la novela con lugares reales marcados con la S." },
+  { pag: "178–179", desde: 178, hasta: 179, tipo: "Postal", titulo: "Postal desde Feira Nova, Brasil (15/04/2012), firmada «E-»", desc: "Eric sigue el viaje por el nordeste de Brasil." },
+  { pag: "190–191", desde: 190, hasta: 191, tipo: "Postal", titulo: "Postal desde Valença, Brasil (18/04/2012), firmada «E-»", desc: "Eric se acerca a la pista de Caldeira." },
+  { pag: "192–193", desde: 192, hasta: 193, tipo: "Postal", titulo: "Postal desde Ibirapitanga, Brasil (19 de abril), firmada «E-»", desc: "Más avances del viaje. Lee las postales en orden de fecha." },
+  { pag: "200–201", desde: 200, hasta: 201, tipo: "Postal", titulo: "Postal desde cerca de Maraú, Brasil (matasellos 21/4/2012), firmada «E-»", desc: "Última postal del viaje." },
   { pag: "203–204", desde: 203, hasta: 204, tipo: "Carta", titulo: "Carta de Eric a Jen sobre su familia", desc: "Eric cuenta su historia familiar y su pasado: el origen de sus miedos y de su obsesión con Straka." },
-  { pag: "242–243", desde: 242, hasta: 243, tipo: "Foto", titulo: "Fotografía de una mujer (¿Filomela Caldeira?)", desc: "Foto antigua que podría mostrar a la traductora. Es clave para la capa Caldeira." },
-  { pag: "256–257", desde: 256, hasta: 257, tipo: "Tarjeta", titulo: "Tarjeta de Ermelinda Pega con el obituario de F.X. Caldeira", desc: "Una remitente brasileña envía el obituario de Caldeira con una nota: «para tu libro». Pregúntate quién es Ermelinda." },
+  { pag: "242–243", desde: 242, hasta: 243, tipo: "Foto", titulo: "Fotografía de una mujer junto a un barco (¿Filomela Caldeira?)", desc: "Foto antigua que podría mostrar a la traductora. Es clave para la capa Caldeira." },
+  { pag: "256–257", desde: 256, hasta: 257, tipo: "Tarjeta", titulo: "Tarjeta de Ermelinda Pega + obituario de F.X. Caldeira (2 piezas)", desc: "Una remitente brasileña envía el obituario de Caldeira con una nota: «para tu libro». Son dos piezas en la misma página. Pregúntate quién es Ermelinda." },
   { pag: "306–307", desde: 306, hasta: 307, tipo: "Mapa", titulo: "Servilleta con el mapa de los túneles de la universidad", desc: "Mapa dibujado a mano de los túneles bajo el campus de Pollard State. Tiene que ver con los peligros que corren Jen y Eric." },
   { pag: "360–361", desde: 360, hasta: 361, tipo: "Tarjeta", titulo: "Tarjeta con un dibujo de Desjardins y una cita de «Coriolis»", desc: "Une al investigador francés con una de las novelas de Straka." },
   { pag: "376–377", desde: 376, hasta: 377, tipo: "Carta", titulo: "Carta de Jen a Eric: la verdad de su desaparición", desc: "Jen le confiesa a Eric qué pasó realmente cuando desapareció de niña." },
@@ -317,3 +318,11 @@ export function insertosCerca(p, margen = 2) {
   if (p == null || isNaN(p)) return [];
   return INSERTOS.filter((i) => i.desde < 9999 && p >= i.desde - margen && p <= i.hasta + margen);
 }
+
+export const RECURSOS = [
+  { nombre: "El Barco de Straka", url: "https://elbarcodestraka.wordpress.com", desc: "Web de fans en español: insertos, cronología, personajes, análisis por capítulo y versiones del capítulo 10." },
+  { nombre: "Insertos (El Barco de Straka)", url: "https://elbarcodestraka.wordpress.com/insertos/", desc: "Lista de insertos con su página." },
+  { nombre: "Wiki de S. (Fandom, en inglés)", url: "https://s.fandom.com/wiki/List_of_inserts", desc: "Lista de insertos con fotos, personajes y cronología detallada." },
+  { nombre: "Who is Straka? (en inglés)", url: "https://whoisstraka.wordpress.com", desc: "Blog de lectores centrado en los cifrados y la rueda Eötvös. Contiene soluciones: úsalo con cuidado." },
+];
+
