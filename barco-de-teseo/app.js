@@ -1,6 +1,6 @@
 import {
   LIBRO, CAPITULOS, INSERTOS, TINTAS, PERSONAJES, CANDIDATOS, CRONOLOGIA, CODIGOS, RECURSOS,
-  capituloDePagina, insertosCerca,
+  capituloDePagina, insertosCerca, insertosMencionadosEn, insertoPorId,
 } from "./data.js";
 
 /* ───────────── Utilidades ───────────── */
@@ -15,6 +15,36 @@ const LS = {
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const tintaPorId = (id) => TINTAS.find((t) => t.id === id);
 const capaPorId = (id) => LIBRO.capas.find((c) => c.id === id);
+const FASES = { 0: "Lápiz de Eric (lo más antiguo)", 1: "1.ª conversación (azul y negro)", 2: "2.ª conversación (naranja y verde)", 3: "3.ª conversación (morado y rojo)", 4: "Notas finales (negro de ambos)" };
+const faseTexto = (f) => (f == null ? "Momento por determinar" : FASES[f]);
+const certezaTag = (c) => `<span class="muted small">· certeza ${esc(c)}</span>`;
+
+function fichaInserto(i, vinculadas = [], { compacta = false } = {}) {
+  const fasesTuyas = [...new Set(vinculadas.map((x) => tintaPorId(x.tinta)?.fase).filter((f) => f != null))];
+  const mVis = (i.menciones || []).filter((m) => !m.spoiler);
+  const mSpo = (i.menciones || []).filter((m) => m.spoiler);
+  const linea = (m) => `<li><b>p. ${m.pag}</b> · tinta ${esc(m.tinta)}: ${esc(m.desc)}</li>`;
+  return `<div class="ficha inserto">
+    <p class="small muted">${esc(i.tipo)}</p><b>${esc(i.titulo)}</b>
+    ${compacta ? "" : `<p class="small">${esc(i.desc)}</p>`}
+    <div class="dato"><span>📍 Va guardado en</span><b>${i.pag === "contratapa" ? "la contratapa" : "pp. " + esc(i.pag)}</b></div>
+    <div class="dato"><span>🕰 Pertenece al momento</span><b>${esc(faseTexto(i.momento?.fase))}</b>
+      <p class="small">${esc(i.momento?.texto || "")} ${i.momento ? certezaTag(i.momento.certeza) : ""}</p></div>
+    <div class="dato"><span>✍️ Lo mencionan en los márgenes</span>
+      ${mVis.length || mSpo.length ? `<ul class="small">${mVis.map(linea).join("")}</ul>
+        ${mSpo.length ? `<details><summary class="small muted">Ver mención con spoiler (${mSpo.length})</summary><ul class="small">${mSpo.map(linea).join("")}</ul></details>` : ""}`
+        : `<p class="small muted">Aún no verificado. Si encuentras una nota que lo mencione, regístrala aquí.</p>`}
+    </div>
+    ${vinculadas.length ? `<div class="dato"><span>🔎 Tus pistas sobre este inserto</span><ul class="small">${vinculadas.map((x) => { const t = tintaPorId(x.tinta); return `<li data-pista="${x.id}" style="cursor:pointer"><b>p. ${x.pagina ?? "?"}</b>${t ? ` · <span style="color:${t.hex}">●</span> ${esc(t.nombre)}` : ""} · ${esc((x.texto || "(foto)").slice(0, 70))}</li>`; }).join("")}</ul>
+      ${fasesTuyas.length ? `<p class="small">Según la tinta de tus pistas: <b>${fasesTuyas.map((f) => esc(FASES[f])).join(" / ")}</b></p>` : ""}</div>` : ""}
+    <button class="btn sec small" data-vincular="${i.id}">＋ Registrar dónde lo mencionan</button>
+  </div>`;
+}
+function conectarInsertos(root) {
+  root.querySelectorAll("[data-vincular]").forEach((b) => (b.onclick = () => abrirFormPista(null, { inserto: b.dataset.vincular, tipo: "Nota al margen" })));
+  root.querySelectorAll(".inserto [data-pista]").forEach((el) => (el.onclick = (e) => { e.stopPropagation(); abrirDetallePista(el.dataset.pista); }));
+}
+
 const TIPOS = ["Nota al margen", "Inserto", "Nota al pie (Caldeira)", "Texto de la novela", "Símbolo o dibujo", "Otro"];
 
 /* ───────────── Almacenamiento (IndexedDB) ───────────── */
@@ -108,6 +138,7 @@ async function renderLectura() {
   const p = pagina();
   const cap = capituloDePagina(p);
   const cerca = insertosCerca(p);
+  const mencionados = insertosMencionadosEn(p);
   const pistas = await idb.all("pistas");
   const pct = p == null ? 0 : Math.min(100, Math.round((p / 456) * 100));
 
@@ -134,6 +165,14 @@ async function renderLectura() {
       <h3>Insertos cerca de esta página</h3>
       ${cerca.map((i) => `<p><b>pp. ${esc(i.pag)} · ${esc(i.tipo)}</b><br>${esc(i.titulo)}<br><span class="muted small">${esc(i.desc)}</span></p>`).join("")}
       <p class="muted small">Si un inserto se cae, aquí sabrás dónde va.</p>
+    </div>` : ""}
+
+    ${mencionados.length ? `
+    <div class="ficha">
+      <h3>En los márgenes de esta página se habla de…</h3>
+      ${mencionados.map(({ inserto: i, mencion: m }) => `<p><b>${esc(i.titulo)}</b><br>
+        <span class="small">Nota en la p. ${m.pag} (tinta ${esc(m.tinta)}), pero el inserto va guardado en <b>${i.pag === "contratapa" ? "la contratapa" : "pp. " + esc(i.pag)}</b>.</span>
+        ${m.spoiler ? "" : `<br><span class="muted small">${esc(m.desc)}</span>`}</p>`).join("")}
     </div>` : ""}
 
     <button class="btn sello" id="btnNueva">＋ Registrar una pista</button>
@@ -178,15 +217,15 @@ function tarjetaPista(x) {
   return `<div class="ficha pista" data-pista="${x.id}">
     <div class="num"><span class="small muted">pág.</span><b>${x.pagina ?? "?"}</b>${t ? `<span class="punto" style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${t.hex}"></span>` : ""}</div>
     <div>
-      <div class="small muted">${esc(x.tipo || "")}${x.respuesta ? " · ✓ explicada" : ""}</div>
+      <div class="small muted">${esc(x.tipo || "")}${x.inserto ? " · 📎 " + esc(insertoPorId(x.inserto)?.tipo || "inserto") + " de " + (insertoPorId(x.inserto)?.pag === "contratapa" ? "contratapa" : "pp. " + esc(insertoPorId(x.inserto)?.pag || "?")) : ""}${x.respuesta ? " · ✓ explicada" : ""}</div>
       <div class="texto">${esc((x.texto || "").slice(0, 180)) || "<i>(solo foto)</i>"}</div>
       ${x.foto ? `<img src="${x.foto}" alt="Foto de la pista">` : ""}
     </div>
   </div>`;
 }
 
-function abrirFormPista(existente) {
-  const x = existente || { id: uid(), pagina: pagina(), tipo: TIPOS[0], tinta: null, texto: "", foto: null, creada: Date.now() };
+function abrirFormPista(existente, pre = {}) {
+  const x = existente || { id: uid(), pagina: pagina(), tipo: pre.tipo || TIPOS[0], tinta: null, texto: "", foto: null, inserto: pre.inserto || null, creada: Date.now() };
   abrirModal(`
     <h2>${existente ? "Editar pista" : "Nueva pista"}</h2>
     <div class="fila">
@@ -198,6 +237,8 @@ function abrirFormPista(existente) {
         ${TINTAS.map((t) => `<button type="button" class="tinta-chip ${x.tinta === t.id ? "sel" : ""}" data-t="${t.id}"><span class="punto" style="background:${t.hex}"></span>${esc(t.nombre)}</button>`).join("")}
       </div>
     </label>
+    <label class="campo"><span>¿Habla de algún inserto? (aunque esté guardado en otra página)</span>
+      <select id="fIns"><option value="">— Ninguno —</option>${INSERTOS.map((i) => `<option value="${i.id}" ${x.inserto === i.id ? "selected" : ""}>${i.pag === "contratapa" ? "Contratapa" : "pp. " + esc(i.pag)} · ${esc(i.titulo.slice(0, 60))}</option>`).join("")}</select></label>
     <label class="campo"><span>¿Qué dice o qué ves?</span>
       <textarea id="fTexto" placeholder="Copia la nota, describe el inserto o el símbolo…">${esc(x.texto)}</textarea></label>
     <label class="campo"><span>Foto (opcional)</span>
@@ -225,9 +266,9 @@ function abrirFormPista(existente) {
     $("#fCancel", m).onclick = cerrarModal;
     const guardar = async () => {
       const v = parseInt($("#fPag", m).value, 10);
-      Object.assign(x, { pagina: isNaN(v) ? null : v, tipo: $("#fTipo", m).value, tinta, texto: $("#fTexto", m).value.trim(), foto });
+      Object.assign(x, { pagina: isNaN(v) ? null : v, tipo: $("#fTipo", m).value, tinta, texto: $("#fTexto", m).value.trim(), foto, inserto: $("#fIns", m).value || null });
       if (!x.texto && !x.foto) { alert("Escribe lo que encontraste o añade una foto."); return null; }
-      if (existente && (existente._orig !== JSON.stringify([x.pagina, x.tipo, x.tinta, x.texto, !!x.foto]))) x.respuesta = null;
+      if (existente && (existente._orig !== JSON.stringify([x.pagina, x.tipo, x.tinta, x.texto, !!x.foto, x.inserto || null]))) x.respuesta = null;
       delete x._orig;
       await idb.put("pistas", x);
       return x;
@@ -243,19 +284,21 @@ async function abrirDetallePista(id, explicarYa = false) {
   const t = tintaPorId(x.tinta);
   const cap = capituloDePagina(x.pagina);
   const cerca = insertosCerca(x.pagina, 1);
+  const vinc = insertoPorId(x.inserto);
   abrirModal(`
     <p class="muted small">Página ${x.pagina ?? "?"}${cap ? " · " + esc(cap.titulo) : ""} · ${esc(x.tipo)}</p>
     ${t ? `<p><span class="tinta-chip"><span class="punto" style="background:${t.hex}"></span>${esc(t.nombre)} · ${esc(t.quien)}</span></p><p class="small muted">${esc(t.cuando)}</p>` : ""}
     ${x.texto ? `<p class="chat-q">${esc(x.texto)}</p>` : ""}
     ${x.foto ? `<img class="foto-prev" src="${x.foto}" alt="Foto de la pista">` : ""}
-    ${cerca.length ? `<div class="aviso">Inserto en estas páginas: <b>${esc(cerca.map((i) => i.titulo).join(" · "))}</b></div>` : ""}
+    ${cerca.length ? `<div class="aviso">Inserto guardado en estas páginas: <b>${esc(cerca.map((i) => i.titulo).join(" · "))}</b></div>` : ""}
+    ${vinc ? `<div class="aviso">Esta nota (p. ${x.pagina ?? "?"}) habla de <b>${esc(vinc.titulo)}</b>, que va guardado en <b>${vinc.pag === "contratapa" ? "la contratapa" : "pp. " + esc(vinc.pag)}</b>.${t ? ` Por la tinta, pertenece a: <b>${esc(FASES[t.fase])}</b>.` : ""}</div>` : ""}
     <div class="ficha"><div id="dResp" class="respuesta">${x.respuesta ? md(x.respuesta) : `<p class="muted">Todavía no hay explicación.</p>`}</div></div>
     <button class="btn sello" id="dExplicar">${x.respuesta ? "Volver a explicar" : "Explicar con IA"}</button>
     <div style="height:8px"></div>
     <div class="fila"><button class="btn sec" id="dEditar">Editar</button><button class="btn sec" id="dBorrar">Borrar</button><button class="btn sec" id="dCerrar">Cerrar</button></div>
   `, (m) => {
     $("#dCerrar", m).onclick = () => { cerrarModal(); render(); };
-    $("#dEditar", m).onclick = () => { x._orig = JSON.stringify([x.pagina, x.tipo, x.tinta, x.texto, !!x.foto]); abrirFormPista(x); };
+    $("#dEditar", m).onclick = () => { x._orig = JSON.stringify([x.pagina, x.tipo, x.tinta, x.texto, !!x.foto, x.inserto || null]); abrirFormPista(x); };
     $("#dBorrar", m).onclick = async () => { if (confirm("¿Borrar esta pista?")) { await idb.del("pistas", x.id); cerrarModal(); render(); } };
     const btn = $("#dExplicar", m);
     const go = async () => {
@@ -314,7 +357,8 @@ const SECCIONES = [
   ["capitulos", "Capítulos"], ["insertos", "Insertos"], ["tintas", "Tintas"], ["personajes", "Personajes"],
   ["codigos", "Cifrados"], ["candidatos", "¿Quién es Straka?"], ["cronologia", "Cronología"], ["leer", "Cómo leerlo"], ["recursos", "Recursos"],
 ];
-function renderGuia() {
+async function renderGuia() {
+  const pistasIns = (await idb.all("pistas")).filter((x) => x.inserto);
   const p = pagina();
   const bloqueado = (desde) => estricto() && p != null && desde > p;
   let cuerpo = "";
@@ -327,10 +371,13 @@ function renderGuia() {
         <p>${esc(c.resumen)}</p><ul>${c.claves.map((k) => `<li>${esc(k)}</li>`).join("")}</ul>`}
       </details>`).join("") + `<p class="muted small">Los resúmenes son orientativos y están redactados para esta app. Las páginas corresponden a la edición en inglés.</p>`;
   } else if (guiaSec === "insertos") {
-    cuerpo = `<p class="muted">Los 22 documentos sueltos, en orden. Si alguno se cae, aquí ves dónde va.</p>` +
-      INSERTOS.map((i) => `<div class="ficha"><p class="small muted">pp. ${esc(i.pag)} · ${esc(i.tipo)}</p><b>${esc(i.titulo)}</b>
-        ${bloqueado(i.desde) ? `<p class="muted small"><i>Descripción oculta (modo estricto).</i></p>` : `<p class="small">${esc(i.desc)}</p>`}</div>`).join("") +
-      `<p class="muted small">Ubicación de cada inserto: lista comunitaria de lectores (wiki de S. en Fandom). Coincide con los 22 insertos que registran los catálogos de biblioteca.</p>`;
+    const orden = LS.get("ordenIns", "fisico");
+    let lista = [...INSERTOS];
+    if (orden === "momento") lista.sort((a, b) => (a.momento?.fase ?? 9) - (b.momento?.fase ?? 9));
+    cuerpo = `<p class="muted">Cada inserto tiene <b>dos ubicaciones</b>: la página donde va guardado y el momento de la historia al que pertenece, que se descubre por las notas de los márgenes, a veces muchas páginas antes o después.</p>
+      <div class="segmentos"><button data-orden="fisico" class="${orden === "fisico" ? "activo" : ""}">Orden en el libro</button><button data-orden="momento" class="${orden === "momento" ? "activo" : ""}">Orden por momento</button></div>` +
+      lista.map((i) => bloqueado(i.desde) ? `<div class="ficha"><p class="small muted">pp. ${esc(i.pag)} · ${esc(i.tipo)}</p><b>${esc(i.titulo)}</b><p class="muted small"><i>Detalles ocultos (modo estricto).</i></p></div>` : fichaInserto(i, pistasIns.filter((x) => x.inserto === i.id))).join("") +
+      `<p class="muted small">Páginas: lista comunitaria de lectores (wiki de S. y El Barco de Straka), con los 22 insertos que registran los catálogos de biblioteca. Las menciones en los márgenes marcadas como verificadas fueron revisadas en el escaneo del libro. El resto aún no está confirmado.</p>`;
   } else if (guiaSec === "tintas") {
     cuerpo = `<p class="muted">El color de la tinta indica <b>cuándo</b> se escribió una nota, no en qué página está. Una nota naranja en la página 10 es posterior a una azul en la página 400.</p>` +
       TINTAS.map((t) => `<div class="ficha"><p><span class="tinta-chip"><span class="punto" style="background:${t.hex}"></span>${esc(t.nombre)}</span> <b>${esc(t.quien)}</b> <span class="muted small">· fase ${t.fase}</span></p><p class="small">${esc(t.cuando)}</p>${t.certeza !== "alta" ? `<p class="muted small">Certeza ${t.certeza}: las guías de lectores coinciden en general, con matices.</p>` : ""}</div>`).join("") +
@@ -363,6 +410,8 @@ function renderGuia() {
     <div class="segmentos">${SECCIONES.map(([id, n]) => `<button data-sec="${id}" class="${guiaSec === id ? "activo" : ""}">${n}</button>`).join("")}</div>
     ${cuerpo}`;
   vista.querySelectorAll("[data-sec]").forEach((b) => (b.onclick = () => { guiaSec = b.dataset.sec; LS.set("guiaSec", guiaSec); renderGuia(); }));
+  vista.querySelectorAll("[data-orden]").forEach((b) => (b.onclick = () => { LS.set("ordenIns", b.dataset.orden); renderGuia(); }));
+  conectarInsertos(vista);
 }
 
 /* ───────────── Vista: Ajustes ───────────── */
@@ -488,8 +537,8 @@ ${LIBRO.capas.map((c) => `- ${c.nombre}: ${c.desc}`).join("\n")}
 Capítulos (páginas de la edición en inglés):
 ${CAPITULOS.map((c) => `- ${c.num} «${c.tituloEn}» (desde p. ${c.desde}): ${c.resumen}`).join("\n")}
 
-Insertos (páginas entre las que va cada uno):
-${INSERTOS.map((i) => `- pp. ${i.pag}: ${i.titulo}`).join("\n")}
+Insertos. Cada uno va GUARDADO en una página, pero puede PERTENECER a otro momento de la historia, que se descubre por las notas de los márgenes de otras páginas:
+${INSERTOS.map((i) => `- Guardado en ${i.pag}: ${i.titulo}. Momento: ${faseTexto(i.momento?.fase)} — ${i.momento?.texto || ""} (certeza ${i.momento?.certeza || "?"})${(i.menciones || []).length ? ". Mencionado en los márgenes: " + i.menciones.map((m) => `p. ${m.pag}, tinta ${m.tinta}`).join("; ") : ""}`).join("\n")}
 
 Tintas (indican CUÁNDO se escribió una nota, no dónde):
 ${TINTAS.map((t) => `- ${t.nombre} = ${t.quien}, fase ${t.fase}: ${t.cuando}`).join("\n")}
@@ -532,13 +581,14 @@ async function explicarPista(x, onTexto) {
 - Página: ${x.pagina ?? "no indicada"}
 - Tipo: ${x.tipo}
 - Tinta: ${t ? `${t.nombre} (${t.quien}, fase ${t.fase})` : "no indicada"}
-- Insertos en esas páginas: ${cerca.map((i) => i.titulo).join("; ") || "ninguno"}
+- Insertos guardados en esas páginas: ${cerca.map((i) => i.titulo).join("; ") || "ninguno"}
+- Inserto del que habla, según la persona: ${insertoPorId(x.inserto) ? insertoPorId(x.inserto).titulo + " (guardado en " + insertoPorId(x.inserto).pag + ")" : "no indicado (si la nota parece referirse a algún inserto, dilo y explica dónde está guardado y a qué momento pertenece)"}
 - Lo que la persona escribió: ${x.texto || "(ver la foto adjunta)"}
 
 Explícame esta pista con estas secciones:
 ### Qué es
 ### Capa y momento
-(a cuál de las tres capas pertenece y, si hay tinta, en qué momento de la conversación de Jen y Eric se escribió)
+(a cuál de las tres capas pertenece y, si hay tinta, en qué momento de la conversación de Jen y Eric se escribió. Si se relaciona con un inserto, distingue la página donde está guardado del momento al que pertenece)
 ### Qué significa
 ### Conexiones
 (con otras partes del libro y con mis pistas anteriores)

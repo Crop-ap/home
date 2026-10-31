@@ -169,3 +169,8 @@ input[type=range] { width: 100%; accent-color: var(--sello); }
 .foto-prev { width: 100%; border-radius: 6px; margin-bottom: 10px; border: 1px solid var(--linea); }
 .oculto { display: none !important; }
 .chat-q { font-family: var(--mano); font-size: 17px; margin-bottom: 6px; }
+
+.inserto .dato { border-top: 1px dashed var(--linea); padding-top: 8px; margin-top: 8px; }
+.inserto .dato > span { display: block; font-size: 12px; color: var(--tinta-2); font-variant: small-caps; letter-spacing: .05em; }
+.inserto .dato ul { margin: 4px 0; padding-left: 18px; }
+.btn.small { font-size: 14px; padding: 8px 12px; margin-top: 10px; }
