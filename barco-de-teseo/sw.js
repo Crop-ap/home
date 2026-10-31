@@ -1,5 +1,5 @@
 // Caché offline de la app. Sube VERSION al cambiar archivos.
-const VERSION = "teseo-v4";
+const VERSION = "teseo-v5";
 const ARCHIVOS = ["./", "index.html", "styles.css", "app.js", "data.js", "manifest.webmanifest", "icons/icon-180.png", "icons/icon-192.png", "icons/icon-512.png"];
 
 self.addEventListener("install", (e) => {

@@ -19,24 +19,27 @@ const FASES = { 0: "Lápiz de Eric (lo más antiguo)", 1: "1.ª conversación (a
 const faseTexto = (f) => (f == null ? "Momento por determinar" : FASES[f]);
 const certezaTag = (c) => `<span class="muted small">· certeza ${esc(c)}</span>`;
 
+// Página donde conviene leer el inserto: definida a mano (leerEn) o, si no, donde va guardado.
+const paginaLectura = (i) => i.leerEn ?? (i.desde < 9999 ? i.desde : null);
+const dondeGuardado = (i) => (i.pag === "contratapa" ? "la contratapa" : "pp. " + esc(i.pag));
+
 function fichaInserto(i, vinculadas = [], { compacta = false } = {}) {
-  const fasesTuyas = [...new Set(vinculadas.map((x) => tintaPorId(x.tinta)?.fase).filter((f) => f != null))];
-  const mVis = (i.menciones || []).filter((m) => !m.spoiler);
-  const mSpo = (i.menciones || []).filter((m) => m.spoiler);
-  const linea = (m) => `<li><b>p. ${m.pag}</b> · tinta ${esc(m.tinta)}: ${esc(m.desc)}</li>`;
+  const mVis = (i.menciones || []).filter((m) => !m.spoiler).sort((a, b) => a.pag - b.pag);
+  const mSpo = (i.menciones || []).filter((m) => m.spoiler).sort((a, b) => a.pag - b.pag);
+  const linea = (m) => `<li><b>p. ${m.pag}</b>: ${esc(m.desc)}</li>`;
+  const pm = paginaLectura(i);
   return `<div class="ficha inserto">
     <p class="small muted">${esc(i.tipo)}</p><b>${esc(i.titulo)}</b>
     ${compacta ? "" : `<p class="small">${esc(i.desc)}</p>`}
-    <div class="dato"><span>📍 Va guardado en</span><b>${i.pag === "contratapa" ? "la contratapa" : "pp. " + esc(i.pag)}</b></div>
-    <div class="dato"><span>🕰 Pertenece al momento</span><b>${esc(faseTexto(i.momento?.fase))}</b>
-      <p class="small">${esc(i.momento?.texto || "")} ${i.momento ? certezaTag(i.momento.certeza) : ""}</p></div>
-    <div class="dato"><span>✍️ Lo mencionan en los márgenes</span>
+    <div class="dato"><span>📍 Va guardado en</span><b>${dondeGuardado(i)}</b></div>
+    <div class="dato"><span>📖 Léelo cuando llegues a</span><b>${pm != null ? "la p. " + pm : dondeGuardado(i)}</b>${pm != null && pm !== i.desde ? ` <span class="small muted">(aunque está guardado en ${dondeGuardado(i)})</span>` : pm == null ? "" : ` <span class="small muted">(donde va guardado)</span>`}</div>
+    <div class="dato"><span>🕰 Momento de la historia</span><p class="small">${esc(i.momento?.texto || "")} <span class="muted small">· certeza ${esc(i.momento?.certeza || "?")}</span></p></div>
+    <div class="dato"><span>✍️ Páginas que hablan de él</span>
       ${mVis.length || mSpo.length ? `<ul class="small">${mVis.map(linea).join("")}</ul>
-        ${mSpo.length ? `<details><summary class="small muted">Ver mención con spoiler (${mSpo.length})</summary><ul class="small">${mSpo.map(linea).join("")}</ul></details>` : ""}`
-        : `<p class="small muted">Aún no verificado. Si encuentras una nota que lo mencione, regístrala aquí.</p>`}
+        ${mSpo.length ? `<details><summary class="small muted">Ver ${mSpo.length === 1 ? "mención" : "menciones"} con spoiler (${mSpo.length})</summary><ul class="small">${mSpo.map(linea).join("")}</ul></details>` : ""}`
+        : `<p class="small muted">Aún no se ha encontrado ninguna. Si das con una nota que lo mencione, regístrala aquí.</p>`}
     </div>
-    ${vinculadas.length ? `<div class="dato"><span>🔎 Tus pistas sobre este inserto</span><ul class="small">${vinculadas.map((x) => { const t = tintaPorId(x.tinta); return `<li data-pista="${x.id}" style="cursor:pointer"><b>p. ${x.pagina ?? "?"}</b>${t ? ` · <span style="color:${t.hex}">●</span> ${esc(t.nombre)}` : ""} · ${esc((x.texto || "(foto)").slice(0, 70))}</li>`; }).join("")}</ul>
-      ${fasesTuyas.length ? `<p class="small">Según la tinta de tus pistas: <b>${fasesTuyas.map((f) => esc(FASES[f])).join(" / ")}</b></p>` : ""}</div>` : ""}
+    ${vinculadas.length ? `<div class="dato"><span>🔎 Tus pistas sobre este inserto</span><ul class="small">${vinculadas.sort((a, b) => (a.pagina ?? 0) - (b.pagina ?? 0)).map((x) => `<li data-pista="${x.id}" style="cursor:pointer"><b>p. ${x.pagina ?? "?"}</b>: ${esc((x.texto || "(foto)").slice(0, 80))}</li>`).join("")}</ul></div>` : ""}
     <button class="btn sec small" data-vincular="${i.id}">＋ Registrar dónde lo mencionan</button>
   </div>`;
 }
@@ -138,7 +141,10 @@ async function renderLectura() {
   const p = pagina();
   const cap = capituloDePagina(p);
   const cerca = insertosCerca(p);
-  const mencionados = insertosMencionadosEn(p);
+  // Insertos que conviene leer aquí aunque estén guardados en otra página…
+  const leerAqui = p == null ? [] : INSERTOS.filter((i) => { const lp = paginaLectura(i); return lp != null && lp !== i.desde && Math.abs(lp - p) <= 1; });
+  // …y menciones de paso a insertos guardados en otra parte.
+  const mencionados = insertosMencionadosEn(p).filter(({ inserto: i }) => !leerAqui.includes(i) && !(p >= i.desde - 1 && p <= i.hasta + 1));
   const pistas = await idb.all("pistas");
   const pct = p == null ? 0 : Math.min(100, Math.round((p / 456) * 100));
 
@@ -167,11 +173,16 @@ async function renderLectura() {
       <p class="muted small">Si un inserto se cae, aquí sabrás dónde va.</p>
     </div>` : ""}
 
+    ${leerAqui.length ? `
+    <div class="ficha">
+      <h3>📖 En esta página conviene leer…</h3>
+      ${leerAqui.map((i) => `<p><b>${esc(i.titulo)}</b><br><span class="small">Está guardado en <b>${i.pag === "contratapa" ? "la contratapa" : "pp. " + esc(i.pag)}</b>. ${esc(i.momento?.texto || "")}</span></p>`).join("")}
+    </div>` : ""}
     ${mencionados.length ? `
     <div class="ficha">
-      <h3>En los márgenes de esta página se habla de…</h3>
+      <h3>✍️ En los márgenes de esta página se habla de…</h3>
       ${mencionados.map(({ inserto: i, mencion: m }) => `<p><b>${esc(i.titulo)}</b><br>
-        <span class="small">Nota en la p. ${m.pag} (tinta ${esc(m.tinta)}), pero el inserto va guardado en <b>${i.pag === "contratapa" ? "la contratapa" : "pp. " + esc(i.pag)}</b>.</span>
+        <span class="small">Guardado en <b>${i.pag === "contratapa" ? "la contratapa" : "pp. " + esc(i.pag)}</b>. Léelo en la p. ${paginaLectura(i) ?? "—"}.</span>
         ${m.spoiler ? "" : `<br><span class="muted small">${esc(m.desc)}</span>`}</p>`).join("")}
     </div>` : ""}
 
@@ -232,11 +243,11 @@ function abrirFormPista(existente, pre = {}) {
       <label class="campo"><span>Página</span><input type="number" id="fPag" inputmode="numeric" value="${x.pagina ?? ""}" placeholder="ej. 54"></label>
       <label class="campo"><span>Tipo</span><select id="fTipo">${TIPOS.map((t) => `<option ${t === x.tipo ? "selected" : ""}>${t}</option>`).join("")}</select></label>
     </div>
-    <label class="campo"><span>Color de tinta (si aplica)</span>
-      <div class="tintas" id="fTintas">
+    <details class="campo" ${x.tinta ? "open" : ""}><summary class="small muted">Color de tinta (opcional)</summary>
+      <div class="tintas" id="fTintas" style="margin-top:8px">
         ${TINTAS.map((t) => `<button type="button" class="tinta-chip ${x.tinta === t.id ? "sel" : ""}" data-t="${t.id}"><span class="punto" style="background:${t.hex}"></span>${esc(t.nombre)}</button>`).join("")}
       </div>
-    </label>
+    </details>
     <label class="campo"><span>¿Habla de algún inserto? (aunque esté guardado en otra página)</span>
       <select id="fIns"><option value="">— Ninguno —</option>${INSERTOS.map((i) => `<option value="${i.id}" ${x.inserto === i.id ? "selected" : ""}>${i.pag === "contratapa" ? "Contratapa" : "pp. " + esc(i.pag)} · ${esc(i.titulo.slice(0, 60))}</option>`).join("")}</select></label>
     <label class="campo"><span>¿Qué dice o qué ves?</span>
@@ -291,7 +302,7 @@ async function abrirDetallePista(id, explicarYa = false) {
     ${x.texto ? `<p class="chat-q">${esc(x.texto)}</p>` : ""}
     ${x.foto ? `<img class="foto-prev" src="${x.foto}" alt="Foto de la pista">` : ""}
     ${cerca.length ? `<div class="aviso">Inserto guardado en estas páginas: <b>${esc(cerca.map((i) => i.titulo).join(" · "))}</b></div>` : ""}
-    ${vinc ? `<div class="aviso">Esta nota (p. ${x.pagina ?? "?"}) habla de <b>${esc(vinc.titulo)}</b>, que va guardado en <b>${vinc.pag === "contratapa" ? "la contratapa" : "pp. " + esc(vinc.pag)}</b>.${t ? ` Por la tinta, pertenece a: <b>${esc(FASES[t.fase])}</b>.` : ""}</div>` : ""}
+    ${vinc ? `<div class="aviso">Esta nota (p. ${x.pagina ?? "?"}) habla de <b>${esc(vinc.titulo)}</b>, que va guardado en <b>${vinc.pag === "contratapa" ? "la contratapa" : "pp. " + esc(vinc.pag)}</b>. ${esc(vinc.momento?.texto || "")}</div>` : ""}
     <div class="ficha"><div id="dResp" class="respuesta">${x.respuesta ? md(x.respuesta) : `<p class="muted">Todavía no hay explicación.</p>`}</div></div>
     <button class="btn sello" id="dExplicar">${x.respuesta ? "Volver a explicar" : "Explicar con IA"}</button>
     <div style="height:8px"></div>
@@ -371,11 +382,11 @@ async function renderGuia() {
         <p>${esc(c.resumen)}</p><ul>${c.claves.map((k) => `<li>${esc(k)}</li>`).join("")}</ul>`}
       </details>`).join("") + `<p class="muted small">Los resúmenes son orientativos y están redactados para esta app. Las páginas corresponden a la edición en inglés.</p>`;
   } else if (guiaSec === "insertos") {
-    const orden = LS.get("ordenIns", "fisico");
+    let orden = LS.get("ordenIns", "fisico"); if (orden === "momento") orden = "lectura";
     let lista = [...INSERTOS];
-    if (orden === "momento") lista.sort((a, b) => (a.momento?.fase ?? 9) - (b.momento?.fase ?? 9));
-    cuerpo = `<p class="muted">Cada inserto tiene <b>dos ubicaciones</b>: la página donde va guardado y el momento de la historia al que pertenece, que se descubre por las notas de los márgenes, a veces muchas páginas antes o después.</p>
-      <div class="segmentos"><button data-orden="fisico" class="${orden === "fisico" ? "activo" : ""}">Orden en el libro</button><button data-orden="momento" class="${orden === "momento" ? "activo" : ""}">Orden por momento</button></div>` +
+    if (orden === "lectura") lista.sort((a, b) => (paginaLectura(a) ?? 9999) - (paginaLectura(b) ?? 9999));
+    cuerpo = `<p class="muted">Cada inserto tiene <b>dos ubicaciones</b>: la página donde va guardado y la página donde conviene leerlo, que es donde las notas de los márgenes hablan de él. A veces están muy lejos una de otra.</p>
+      <div class="segmentos"><button data-orden="fisico" class="${orden === "fisico" ? "activo" : ""}">Orden en el libro</button><button data-orden="lectura" class="${orden === "lectura" ? "activo" : ""}">Orden de lectura sugerido</button></div>` +
       lista.map((i) => bloqueado(i.desde) ? `<div class="ficha"><p class="small muted">pp. ${esc(i.pag)} · ${esc(i.tipo)}</p><b>${esc(i.titulo)}</b><p class="muted small"><i>Detalles ocultos (modo estricto).</i></p></div>` : fichaInserto(i, pistasIns.filter((x) => x.inserto === i.id))).join("") +
       `<p class="muted small">Páginas: lista comunitaria de lectores (wiki de S. y El Barco de Straka), con los 22 insertos que registran los catálogos de biblioteca. Las menciones en los márgenes marcadas como verificadas fueron revisadas en el escaneo del libro. El resto aún no está confirmado.</p>`;
   } else if (guiaSec === "tintas") {
@@ -538,7 +549,7 @@ Capítulos (páginas de la edición en inglés):
 ${CAPITULOS.map((c) => `- ${c.num} «${c.tituloEn}» (desde p. ${c.desde}): ${c.resumen}`).join("\n")}
 
 Insertos. Cada uno va GUARDADO en una página, pero puede PERTENECER a otro momento de la historia, que se descubre por las notas de los márgenes de otras páginas:
-${INSERTOS.map((i) => `- Guardado en ${i.pag}: ${i.titulo}. Momento: ${faseTexto(i.momento?.fase)} — ${i.momento?.texto || ""} (certeza ${i.momento?.certeza || "?"})${(i.menciones || []).length ? ". Mencionado en los márgenes: " + i.menciones.map((m) => `p. ${m.pag}, tinta ${m.tinta}`).join("; ") : ""}`).join("\n")}
+${INSERTOS.map((i) => `- Guardado en ${i.pag}: ${i.titulo}. Momento: ${i.momento?.texto || ""} (certeza ${i.momento?.certeza || "?"})${(i.menciones || []).length ? ". Lo mencionan en los márgenes: " + i.menciones.map((m) => `p. ${m.pag} (${m.desc})`).join("; ") : ""}`).join("\n")}
 
 Tintas (indican CUÁNDO se escribió una nota, no dónde):
 ${TINTAS.map((t) => `- ${t.nombre} = ${t.quien}, fase ${t.fase}: ${t.cuando}`).join("\n")}
@@ -553,7 +564,8 @@ Cifrados de Caldeira (información parcial): ${CODIGOS.map((c) => `${c.donde}: $
 3. Derechos de autor: no transcribas pasajes largos del libro. Resume con tus palabras y cita como máximo frases muy breves cuando sea imprescindible.
 4. Cifrados: si piden ayuda con un código, empieza con una pista leve. Da la solución completa solo si la piden explícitamente.
 5. Spoilers: respeta el modo que se te indique en cada consulta. En modo estricto, no adelantes nada posterior a la página actual de la persona.
-6. Formato: markdown sencillo (### títulos, viñetas, **negritas**), sin tablas. Sé conciso: claro antes que largo.`;
+6. A la persona NO le interesan los colores de tinta: no organices tus respuestas por colores ni fases de tinta. Lo que quiere es una guía práctica: qué es la pista, a qué parte de la historia pertenece, qué inserto o página debe consultar (y dónde está guardado ese inserto) y qué significa.
+7. Formato: markdown sencillo (### títulos, viñetas, **negritas**), sin tablas. Sé conciso: claro antes que largo.`;
 
 function contexto(extra) {
   const p = pagina();
@@ -587,8 +599,8 @@ async function explicarPista(x, onTexto) {
 
 Explícame esta pista con estas secciones:
 ### Qué es
-### Capa y momento
-(a cuál de las tres capas pertenece y, si hay tinta, en qué momento de la conversación de Jen y Eric se escribió. Si se relaciona con un inserto, distingue la página donde está guardado del momento al que pertenece)
+### A qué parte de la historia pertenece
+(a cuál de las tres capas pertenece y a qué momento de la historia. Si se relaciona con un inserto, di cuál es, dónde está guardado y en qué página conviene leerlo)
 ### Qué significa
 ### Conexiones
 (con otras partes del libro y con mis pistas anteriores)
