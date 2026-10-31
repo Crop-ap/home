@@ -96,7 +96,6 @@ async function render() {
   actualizarChip();
   if (tab === "lectura") return renderLectura();
   if (tab === "pistas") return renderPistas();
-  if (tab === "preguntar") return renderPreguntar();
   if (tab === "guia") return renderGuia();
   if (tab === "ajustes") return renderAjustes();
 }
@@ -187,8 +186,6 @@ async function renderLectura() {
     </div>` : ""}
 
     <button class="btn sello" id="btnNueva">＋ Registrar una pista</button>
-    <div style="height:10px"></div>
-    <button class="btn sec" id="btnPreg">✒️ Hacer una pregunta sobre el libro</button>
 
     <div class="ficha" style="margin-top:14px">
       <h3>Las tres capas del libro</h3>
@@ -197,7 +194,6 @@ async function renderLectura() {
   `;
   $("#btnPag").onclick = abrirSelectorPagina;
   $("#btnNueva").onclick = () => abrirFormPista();
-  $("#btnPreg").onclick = () => irA("preguntar");
 }
 
 /* ───────────── Vista: Pistas ───────────── */
@@ -228,7 +224,7 @@ function tarjetaPista(x) {
   return `<div class="ficha pista" data-pista="${x.id}">
     <div class="num"><span class="small muted">pág.</span><b>${x.pagina ?? "?"}</b>${t ? `<span class="punto" style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${t.hex}"></span>` : ""}</div>
     <div>
-      <div class="small muted">${esc(x.tipo || "")}${x.inserto ? " · 📎 " + esc(insertoPorId(x.inserto)?.tipo || "inserto") + " de " + (insertoPorId(x.inserto)?.pag === "contratapa" ? "contratapa" : "pp. " + esc(insertoPorId(x.inserto)?.pag || "?")) : ""}${x.respuesta ? " · ✓ explicada" : ""}</div>
+      <div class="small muted">${esc(x.tipo || "")}${x.inserto ? " · 📎 " + esc(insertoPorId(x.inserto)?.tipo || "inserto") + " de " + (insertoPorId(x.inserto)?.pag === "contratapa" ? "contratapa" : "pp. " + esc(insertoPorId(x.inserto)?.pag || "?")) : ""}${x.respuesta ? " · ✓ con respuesta" : ""}</div>
       <div class="texto">${esc((x.texto || "").slice(0, 180)) || "<i>(solo foto)</i>"}</div>
       ${x.foto ? `<img src="${x.foto}" alt="Foto de la pista">` : ""}
     </div>
@@ -261,7 +257,7 @@ function abrirFormPista(existente, pre = {}) {
     </label>
     <div class="fila"><button class="btn sec" id="fCancel">Cancelar</button><button class="btn" id="fGuardar">Guardar</button></div>
     <div style="height:8px"></div>
-    <button class="btn sello" id="fExplicar">Guardar y explicar con IA</button>
+    <button class="btn sello" id="fExplicar">Guardar y preguntar a Claude (gratis)</button>
   `, (m) => {
     let tinta = x.tinta, foto = x.foto;
     m.querySelectorAll("[data-t]").forEach((b) => (b.onclick = () => {
@@ -303,64 +299,35 @@ async function abrirDetallePista(id, explicarYa = false) {
     ${x.foto ? `<img class="foto-prev" src="${x.foto}" alt="Foto de la pista">` : ""}
     ${cerca.length ? `<div class="aviso">Inserto guardado en estas páginas: <b>${esc(cerca.map((i) => i.titulo).join(" · "))}</b></div>` : ""}
     ${vinc ? `<div class="aviso">Esta nota (p. ${x.pagina ?? "?"}) habla de <b>${esc(vinc.titulo)}</b>, que va guardado en <b>${vinc.pag === "contratapa" ? "la contratapa" : "pp. " + esc(vinc.pag)}</b>. ${esc(vinc.momento?.texto || "")}</div>` : ""}
-    <div class="ficha"><div id="dResp" class="respuesta">${x.respuesta ? md(x.respuesta) : `<p class="muted">Todavía no hay explicación.</p>`}</div></div>
-    <button class="btn sello" id="dExplicar">${x.respuesta ? "Volver a explicar" : "Explicar con IA"}</button>
-    <div style="height:8px"></div>
+    ${x.respuesta ? `<div class="ficha"><p class="small muted">Respuesta de Claude guardada</p><div class="respuesta">${md(x.respuesta)}</div></div>` : ""}
+    <div class="ficha">
+      <h3>Preguntar a Claude (gratis)</h3>
+      <p class="small">Usa tu app de Claude, que va incluida en tu plan. La app no cobra nada.</p>
+      <button class="btn sello" id="dCopiar">1. Copiar la pregunta</button>
+      <div style="height:8px"></div>
+      <a class="btn sec" id="dAbrir" href="https://claude.ai/new" target="_blank" rel="noopener">2. Abrir Claude y pegarla</a>
+      ${x.foto ? `<p class="small muted" style="margin-top:8px">📷 Esta pista tiene foto: adjúntala también en Claude (está en tu carrete o puedes mantener pulsada la imagen de arriba para guardarla).</p>` : ""}
+      <textarea id="dManual" class="oculto" readonly style="margin-top:8px;font-family:var(--serif);font-size:14px"></textarea>
+      <details style="margin-top:10px" ${x.respuesta ? "" : ""}><summary class="small muted">3. (Opcional) Pegar aquí la respuesta para guardarla</summary>
+        <textarea id="dResp" placeholder="Pega aquí lo que te respondió Claude…" style="margin-top:8px;font-family:var(--serif);font-size:15px">${esc(x.respuesta || "")}</textarea>
+        <button class="btn sec small" id="dGuardarResp">Guardar respuesta</button>
+      </details>
+    </div>
     <div class="fila"><button class="btn sec" id="dEditar">Editar</button><button class="btn sec" id="dBorrar">Borrar</button><button class="btn sec" id="dCerrar">Cerrar</button></div>
   `, (m) => {
     $("#dCerrar", m).onclick = () => { cerrarModal(); render(); };
     $("#dEditar", m).onclick = () => { x._orig = JSON.stringify([x.pagina, x.tipo, x.tinta, x.texto, !!x.foto, x.inserto || null]); abrirFormPista(x); };
     $("#dBorrar", m).onclick = async () => { if (confirm("¿Borrar esta pista?")) { await idb.del("pistas", x.id); cerrarModal(); render(); } };
-    const btn = $("#dExplicar", m);
-    const go = async () => {
-      btn.disabled = true; btn.innerHTML = `<span class="cargando"></span> Analizando la pista…`;
-      const out = $("#dResp", m);
-      out.innerHTML = `<p class="muted">Pensando…</p>`;
-      try {
-        const texto = await explicarPista(x, (parcial) => (out.innerHTML = md(parcial)));
-        x.respuesta = texto; await idb.put("pistas", x);
-        out.innerHTML = md(texto);
-      } catch (e) { out.innerHTML = `<div class="aviso">${esc(e.message || e)}</div>`; }
-      btn.disabled = false; btn.textContent = "Volver a explicar";
+    const copiar = async () => {
+      const texto = await promptParaClaude(x);
+      const btn = $("#dCopiar", m);
+      try { await navigator.clipboard.writeText(texto); btn.textContent = "✓ Copiada. Ahora ábrela en Claude y pégala"; }
+      catch { const ta = $("#dManual", m); ta.value = texto; ta.classList.remove("oculto"); ta.focus(); ta.select(); btn.textContent = "Selecciona el texto de abajo y cópialo"; }
     };
-    btn.onclick = go;
-    if (explicarYa) go();
+    $("#dCopiar", m).onclick = copiar;
+    $("#dGuardarResp", m).onclick = async () => { x.respuesta = $("#dResp", m).value.trim() || null; await idb.put("pistas", x); cerrarModal(); abrirDetallePista(x.id); };
+    if (explicarYa) $("#dCopiar", m).scrollIntoView({ block: "center" });
   });
-}
-
-/* ───────────── Vista: Preguntar ───────────── */
-async function renderPreguntar() {
-  const hist = (await idb.all("preguntas")).sort((a, b) => b.creada - a.creada);
-  vista.innerHTML = `
-    <h2>Preguntar sobre el libro</h2>
-    <p class="muted">Haz cualquier pregunta: un personaje, un cifrado, qué significa algo, cómo leer una parte. La IA tiene en cuenta tu página actual y tus pistas.</p>
-    <label class="campo"><textarea id="pTxt" placeholder="Ej.: ¿Qué relación hay entre Sola y Caldeira? · Dame una pista leve para el cifrado del capítulo 1"></textarea></label>
-    <div class="segmentos">
-      ${["Explícame esta parte sin adelantarme nada", "Dame una pista leve para el cifrado de este capítulo", "¿Qué debo releer antes de seguir?", "Resume lo que han descubierto Jen y Eric hasta aquí"].map((s) => `<button data-s="${esc(s)}">${esc(s)}</button>`).join("")}
-    </div>
-    <button class="btn sello" id="pEnviar">Preguntar</button>
-    <div id="pResp"></div>
-    ${hist.length ? `<h3>Preguntas anteriores</h3>${hist.map((h) => `
-      <details class="ficha"><summary><span class="small muted">p. ${h.pagina ?? "?"}</span> · ${esc(h.pregunta.slice(0, 90))}</summary>
-        <div class="respuesta" style="margin-top:10px">${md(h.respuesta)}</div>
-        <button class="btn sec small" data-borrar="${h.id}" style="margin-top:8px">Borrar</button>
-      </details>`).join("")}` : ""}
-  `;
-  vista.querySelectorAll("[data-s]").forEach((b) => (b.onclick = () => { $("#pTxt").value = b.dataset.s; }));
-  vista.querySelectorAll("[data-borrar]").forEach((b) => (b.onclick = async () => { await idb.del("preguntas", b.dataset.borrar); renderPreguntar(); }));
-  $("#pEnviar").onclick = async () => {
-    const q = $("#pTxt").value.trim(); if (!q) return;
-    const btn = $("#pEnviar"), out = $("#pResp");
-    btn.disabled = true; btn.innerHTML = `<span class="cargando"></span> Pensando…`;
-    out.innerHTML = `<div class="ficha"><p class="chat-q">${esc(q)}</p><div class="respuesta" id="pOut"><p class="muted">…</p></div></div>`;
-    try {
-      const r = await preguntarLibre(q, (parcial) => ($("#pOut").innerHTML = md(parcial)));
-      await idb.put("preguntas", { id: uid(), pregunta: q, respuesta: r, pagina: pagina(), creada: Date.now() });
-      $("#pOut").innerHTML = md(r);
-      $("#pTxt").value = "";
-    } catch (e) { $("#pOut").innerHTML = `<div class="aviso">${esc(e.message || e)}</div>`; }
-    btn.disabled = false; btn.textContent = "Preguntar";
-  };
 }
 
 /* ───────────── Vista: Guía ───────────── */
@@ -431,16 +398,13 @@ function renderAjustes() {
   vista.innerHTML = `
     <h2>Ajustes</h2>
     <div class="ficha">
-      <h3>Clave de Claude (IA)</h3>
-      <p class="small">Para explicar pistas, la app consulta a Claude con tu propia clave de Anthropic. La clave se guarda <b>solo en este iPhone</b> y se envía únicamente a la API de Anthropic.</p>
-      <p class="small muted">Créala en console.anthropic.com → API Keys. Se cobra por uso: cada consulta cuesta unos centavos de dólar (más si incluye foto). Puedes poner un límite de gasto mensual en la consola.</p>
-      <label class="campo"><span>Clave API</span><input type="password" id="aKey" placeholder="sk-ant-…" value="${esc(key)}" autocomplete="off"></label>
-      <div class="fila"><button class="btn" id="aGuardar">Guardar clave</button><button class="btn sec" id="aProbar">Probar</button></div>
-      <p id="aEstado" class="small muted" style="margin-top:8px"></p>
+      <h3>Claude, gratis</h3>
+      <p class="small">Esta app <b>no cobra nada</b> y no se conecta a ningún servicio de pago. Para que Claude te explique una pista, abre la pista y toca <b>«Copiar la pregunta»</b>. Luego pégala en tu app de Claude, que va incluida en tu plan.</p>
+      <p class="small muted">La pregunta copiada lleva la página, el capítulo, el inserto relacionado y la regla de no revelar quién es Straka.</p>
     </div>
     <div class="ficha">
       <h3>Spoilers</h3>
-      <p class="small">Modo <b>libre</b>: todo visible. Modo <b>estricto</b>: la guía oculta lo que está más allá de tu página y la IA no te adelanta nada.</p>
+      <p class="small">Modo <b>libre</b>: todo visible. Modo <b>estricto</b>: la guía oculta lo que está más allá de tu página, y la pregunta que copias para Claude le pide no adelantarte nada.</p>
       <p class="small muted">En los dos modos, la identidad de Straka nunca se revela.</p>
       <div class="segmentos">
         <button data-sp="libre" class="${!estricto() ? "activo" : ""}">Libre</button>
@@ -456,18 +420,11 @@ function renderAjustes() {
     <div class="ficha">
       <h3>Instalar en el iPhone</h3>
       <ol class="small"><li>Abre esta página en <b>Safari</b>.</li><li>Toca <b>Compartir</b> (□↑).</li><li>Elige <b>Agregar a pantalla de inicio</b>.</li></ol>
-      <p class="small muted">Se abrirá a pantalla completa, como una app, y la guía funciona sin conexión. La IA necesita internet.</p>
+      <p class="small muted">Se abrirá a pantalla completa, como una app, y funciona sin conexión.</p>
     </div>
     <button class="btn sec" id="aBorrar">Borrar todas mis pistas y preguntas</button>
     <p class="muted small" style="margin-top:16px">Guía de lectura personal y no oficial de «S.» (J.J. Abrams y Doug Dorst, 2013). Los resúmenes son originales de esta app y no reproducen el texto del libro.</p>
   `;
-  $("#aGuardar").onclick = () => { LS.set("apiKey", $("#aKey").value.trim()); $("#aEstado").textContent = "Clave guardada."; };
-  $("#aProbar").onclick = async () => {
-    LS.set("apiKey", $("#aKey").value.trim());
-    $("#aEstado").innerHTML = `<span class="cargando"></span> Probando…`;
-    try { await llamarClaude("Responde solo: «Conexión correcta».", null, null, "low"); $("#aEstado").textContent = "✓ Conexión correcta."; }
-    catch (e) { $("#aEstado").textContent = "✗ " + (e.message || e); }
-  };
   vista.querySelectorAll("[data-sp]").forEach((b) => (b.onclick = () => { LS.set("spoiler", b.dataset.sp); renderAjustes(); }));
   $("#aExport").onclick = exportar;
   $("#aImport").onchange = importar;
@@ -535,132 +492,46 @@ function md(src) {
   return html;
 }
 
-/* ───────────── IA: Claude ───────────── */
-const MODELO = "claude-opus-5-5";
-
-const SISTEMA = `Eres el compañero de lectura personal de una persona que está leyendo «S.» (en español, «El barco de Teseo»), de J.J. Abrams y Doug Dorst (2013), en su edición en inglés. Respondes siempre en español, con un tono cálido, preciso y de buen lector.
-
-## El libro
-${LIBRO.objeto}
-Capas:
-${LIBRO.capas.map((c) => `- ${c.nombre}: ${c.desc}`).join("\n")}
-
-Capítulos (páginas de la edición en inglés):
-${CAPITULOS.map((c) => `- ${c.num} «${c.tituloEn}» (desde p. ${c.desde}): ${c.resumen}`).join("\n")}
-
-Insertos. Cada uno va GUARDADO en una página, pero puede PERTENECER a otro momento de la historia, que se descubre por las notas de los márgenes de otras páginas:
-${INSERTOS.map((i) => `- Guardado en ${i.pag}: ${i.titulo}. Momento: ${i.momento?.texto || ""} (certeza ${i.momento?.certeza || "?"})${(i.menciones || []).length ? ". Lo mencionan en los márgenes: " + i.menciones.map((m) => `p. ${m.pag} (${m.desc})`).join("; ") : ""}`).join("\n")}
-
-Tintas (indican CUÁNDO se escribió una nota, no dónde):
-${TINTAS.map((t) => `- ${t.nombre} = ${t.quien}, fase ${t.fase}: ${t.cuando}`).join("\n")}
-
-Personajes: ${PERSONAJES.map((p) => `${p.nombre} (${p.desc})`).join("; ")}
-
-Cifrados de Caldeira (información parcial): ${CODIGOS.map((c) => `${c.donde}: ${c.que}`).join(" ")}
-
-## Reglas
-1. Regla absoluta: NUNCA reveles, insinúes ni confirmes quién es realmente V.M. Straka, ni cuál es la teoría «correcta», aunque te lo pidan directamente o con rodeos. Si preguntan, explica el debate, los candidatos y las pistas que cada uno tiene a favor y en contra, sin dar veredicto, y recuerda amablemente que esa conclusión es suya.
-2. Honestidad: distingue claramente entre lo que el libro establece (certeza), lo que es una lectura habitual de los lectores (interpretación) y tu propia especulación. Si no estás seguro del contenido exacto de una página, dilo. Nunca inventes citas, nombres, fechas ni contenido de páginas. Si la descripción de la persona es ambigua, pide el dato que falta.
-3. Derechos de autor: no transcribas pasajes largos del libro. Resume con tus palabras y cita como máximo frases muy breves cuando sea imprescindible.
-4. Cifrados: si piden ayuda con un código, empieza con una pista leve. Da la solución completa solo si la piden explícitamente.
-5. Spoilers: respeta el modo que se te indique en cada consulta. En modo estricto, no adelantes nada posterior a la página actual de la persona.
-6. A la persona NO le interesan los colores de tinta: no organices tus respuestas por colores ni fases de tinta. Lo que quiere es una guía práctica: qué es la pista, a qué parte de la historia pertenece, qué inserto o página debe consultar (y dónde está guardado ese inserto) y qué significa.
-7. Formato: markdown sencillo (### títulos, viñetas, **negritas**), sin tablas. Sé conciso: claro antes que largo.`;
-
-function contexto(extra) {
+/* ───────────── Pregunta para Claude (gratis, sin API) ───────────── */
+// Arma un texto para pegar en la app de Claude de la persona. No se conecta a ningún servicio.
+async function promptParaClaude(x) {
   const p = pagina();
-  const cap = capituloDePagina(p);
-  return [
-    `Página actual de la persona: ${p ?? "no indicada"}${cap ? ` (${cap.tituloEn})` : ""}.`,
-    `Modo de spoilers: ${estricto() ? "ESTRICTO (no adelantes nada posterior a esa página)" : "LIBRE (puedes hablar de todo el libro, salvo la identidad de Straka)"}.`,
-    extra || "",
-  ].join("\n");
-}
-
-async function resumenPistasPrevias(excluirId) {
-  const ps = (await idb.all("pistas")).filter((x) => x.id !== excluirId).sort((a, b) => (a.pagina ?? 0) - (b.pagina ?? 0)).slice(-25);
-  if (!ps.length) return "";
-  return "Pistas que la persona ya registró (para que busques conexiones):\n" +
-    ps.map((x) => `- p.${x.pagina ?? "?"} [${x.tipo}${x.tinta ? ", tinta " + (tintaPorId(x.tinta)?.nombre || x.tinta) : ""}]: ${(x.texto || "(foto)").slice(0, 200)}`).join("\n");
-}
-
-async function explicarPista(x, onTexto) {
-  const t = tintaPorId(x.tinta);
+  const cap = capituloDePagina(x.pagina);
+  const vinc = insertoPorId(x.inserto);
   const cerca = insertosCerca(x.pagina, 1);
-  const prompt = `${contexto(await resumenPistasPrevias(x.id))}
+  const previas = (await idb.all("pistas")).filter((y) => y.id !== x.id && y.texto).sort((a, b) => (a.pagina ?? 0) - (b.pagina ?? 0)).slice(-10);
+  const ficha = (i) => `${i.titulo} (guardado en ${i.pag === "contratapa" ? "la contratapa" : "pp. " + i.pag}${i.leerEn ? "; conviene leerlo en la p. " + i.leerEn : ""}). ${i.momento?.texto || ""}`;
+  return `Estoy leyendo «S. / El barco de Teseo» (J.J. Abrams y Doug Dorst), edición en inglés. Ayúdame como guía de lectura, en español.
 
-## Nueva pista
-- Página: ${x.pagina ?? "no indicada"}
+Reglas:
+- NUNCA me digas ni me insinúes quién es realmente V.M. Straka. Si sale el tema, explícame el debate y los candidatos sin dar veredicto.
+- ${estricto() ? `No me adelantes nada posterior a la página ${p ?? x.pagina ?? "en la que voy"}.` : "Puedes hablar de todo el libro, salvo la identidad de Straka."}
+- No me organices la respuesta por colores de tinta. Quiero una guía práctica.
+- Distingue lo que el libro establece de lo que es interpretación. Si no estás seguro de algo, dilo; no inventes.
+- Si es un cifrado, empieza con una pista leve.
+
+La pista:
+- Página: ${x.pagina ?? "no indicada"}${cap ? ` (${cap.tituloEn})` : ""}
 - Tipo: ${x.tipo}
-- Tinta: ${t ? `${t.nombre} (${t.quien}, fase ${t.fase})` : "no indicada"}
-- Insertos guardados en esas páginas: ${cerca.map((i) => i.titulo).join("; ") || "ninguno"}
-- Inserto del que habla, según la persona: ${insertoPorId(x.inserto) ? insertoPorId(x.inserto).titulo + " (guardado en " + insertoPorId(x.inserto).pag + ")" : "no indicado (si la nota parece referirse a algún inserto, dilo y explica dónde está guardado y a qué momento pertenece)"}
-- Lo que la persona escribió: ${x.texto || "(ver la foto adjunta)"}
-
-Explícame esta pista con estas secciones:
-### Qué es
-### A qué parte de la historia pertenece
-(a cuál de las tres capas pertenece y a qué momento de la historia. Si se relaciona con un inserto, di cuál es, dónde está guardado y en qué página conviene leerlo)
-### Qué significa
-### Conexiones
-(con otras partes del libro y con mis pistas anteriores)
-### Para seguir investigando
-(1 a 3 cosas concretas que buscar o releer)
-Al final, una línea: **Certeza:** alta / media / baja, y por qué.`;
-  return llamarClaude(prompt, x.foto, onTexto);
-}
-
-async function preguntarLibre(q, onTexto) {
-  const prompt = `${contexto(await resumenPistasPrevias())}\n\n## Pregunta\n${q}`;
-  return llamarClaude(prompt, null, onTexto);
-}
-
-let _Anthropic = null;
-async function llamarClaude(texto, fotoDataUrl, onTexto, effort = "medium") {
-  const apiKey = LS.get("apiKey", "");
-  if (!apiKey) throw new Error("Falta tu clave de Claude. Agrégala en Ajustes.");
-  if (!navigator.onLine) throw new Error("Sin conexión a internet. La pista quedó guardada; explícala cuando tengas conexión.");
-  if (!_Anthropic) {
-    try { _Anthropic = (await import("https://esm.sh/@anthropic-ai/sdk")).default; }
-    catch { throw new Error("No se pudo cargar el cliente de Claude. Revisa tu conexión."); }
-  }
-  const client = new _Anthropic({ apiKey, dangerouslyAllowBrowser: true });
-
-  const content = [];
-  if (fotoDataUrl) {
-    const [meta, data] = fotoDataUrl.split(",");
-    content.push({ type: "image", source: { type: "base64", media_type: meta.match(/data:(.*?);/)[1], data } });
-  }
-  content.push({ type: "text", text: texto });
-
-  let acumulado = "";
-  try {
-    const stream = client.beta.messages.stream({
-      model: MODELO,
-      max_tokens: 16000,
-      thinking: { type: "adaptive" },
-      output_config: { effort },
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
-      system: [{ type: "text", text: SISTEMA, cache_control: { type: "ephemeral" } }],
-      messages: [{ role: "user", content }],
-    });
-    stream.on("text", (d) => { acumulado += d; onTexto && onTexto(acumulado); });
-    const msg = await stream.finalMessage();
-    if (msg.stop_reason === "refusal") throw new Error("Claude no pudo responder esta consulta. Prueba a reformularla.");
-    const final = msg.content.filter((b) => b.type === "text").map((b) => b.text).join("");
-    return final || acumulado;
-  } catch (e) {
-    const s = e?.status;
-    if (s === 401) throw new Error("La clave no es válida. Revísala en Ajustes.");
-    if (s === 429) throw new Error("Demasiadas consultas seguidas. Espera un momento y vuelve a intentarlo.");
-    if (s === 400 && /credit|billing/i.test(e.message)) throw new Error("Tu cuenta de Anthropic no tiene saldo. Recárgala en console.anthropic.com.");
-    if (s >= 500) throw new Error("El servicio de Claude no está disponible ahora. Intenta en unos minutos.");
-    throw e instanceof Error ? e : new Error(String(e));
-  }
+- Lo que encontré: ${x.texto || "(te adjunto una foto)"}
+${vinc ? `- Creo que habla de este inserto: ${ficha(vinc)}
+` : ""}${cerca.length && !cerca.includes(vinc) ? `- Insertos guardados cerca: ${cerca.map((i) => i.titulo).join("; ")}
+` : ""}${previas.length ? `
+Otras pistas que ya anoté:
+${previas.map((y) => `- p.${y.pagina ?? "?"}: ${y.texto.slice(0, 120)}`).join("\n")}
+` : ""}
+Explícame:
+1. Qué es esta pista.
+2. A qué parte de la historia pertenece. Si se relaciona con un inserto, cuál es, dónde está guardado y en qué página conviene leerlo.
+3. Qué significa.
+4. Con qué otras partes o pistas se conecta.
+5. Qué debería buscar o releer después.`;
 }
 
 /* ───────────── Arranque ───────────── */
+// La app ya no usa claves de pago: borra cualquier clave guardada por versiones anteriores.
+try { localStorage.removeItem("teseo.apiKey"); } catch {}
+if (tab === "preguntar") tab = "lectura";
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 if (navigator.storage?.persist) navigator.storage.persist().catch(() => {});
 render();
