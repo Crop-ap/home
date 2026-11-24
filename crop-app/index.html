@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="CROP App">
+<meta name="theme-color" content="#0b1f3a">
+<title>CROP - Informes de Gestión</title>
+<style>
+  html,body{margin:0;height:100%;background:#0b1f3a;color:#fff;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  #espera{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;font-size:15px;opacity:.85}
+  #espera i{width:34px;height:34px;border:3px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:g 0.9s linear infinite}
+  @keyframes g{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="espera"><i></i><span id="msg">Cargando CROP App…</span></div>
+<script>
+/* Versión de prueba en GitHub Pages.
+   La app real vive en Google Apps Script: esta página trae su HTML,
+   lo guarda en el dispositivo y desde la segunda visita lo muestra al instante.
+   Los datos siguen en el mismo Google Sheet, en tiempo real. */
+(function () {
+  var URL_APP = 'https://script.google.com/macros/s/AKfycbzUQTCMyJv0DMvDhDzVsgnDjdRJNLOUGwz6mv0Ll4Dl3wZigzseAox3WMkNIvrwvOuP/exec';
+  var CLAVE = 'cropapp_html';
+
+  function pintar(html) { document.open(); document.write(html); document.close(); }
+  function valido(h) { return typeof h === 'string' && h.length > 5000 && /<html/i.test(h); }
+
+  var guardado = null;
+  try { guardado = localStorage.getItem(CLAVE); } catch (e) {}
+
+  var red = fetch(URL_APP + '?formato=html', { cache: 'no-store' })
+    .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+    .then(function (h) {
+      if (!valido(h)) throw new Error('Respuesta inesperada');
+      try { localStorage.setItem(CLAVE, h); } catch (e) {}
+      return h;
+    });
+
+  if (valido(guardado)) {
+    pintar(guardado);              // abre al instante con la copia guardada
+    red.catch(function () {});     // y la actualiza en segundo plano para la próxima vez
+  } else {
+    red.then(pintar).catch(function () {
+      var m = document.getElementById('msg');
+      if (m) m.textContent = 'No se pudo cargar la app. Revisa tu conexión y vuelve a intentarlo.';
+    });
+  }
+})();
+</script>
+</body>
+</html>
