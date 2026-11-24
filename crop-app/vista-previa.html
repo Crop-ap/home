@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>CROP App - Vista previa</title>
+</head>
+<body style="font-family:system-ui,sans-serif;color:#3b2c4e;text-align:center;padding:40px">
+<p id="msg">No hay ninguna vista previa guardada en este navegador.</p>
+<script>
+/* Muestra una versión de prueba de CROP App guardada en este navegador, sin publicarla. */
+(function () {
+  var h = null;
+  try { h = localStorage.getItem('cropapp_preview'); } catch (e) {}
+  if (!h) return;
+  document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(function () { document.open(); document.write(h); document.close(); }, 0);
+  });
+})();
+</script>
+</body>
+</html>
