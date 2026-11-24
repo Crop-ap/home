@@ -42,7 +42,8 @@
     });
 
   if (valido(guardado)) {
-    pintar(guardado);              // abre al instante con la copia guardada
+    // abre al instante con la copia guardada (cuando termina de leer esta página, para reemplazarla entera)
+    document.addEventListener('DOMContentLoaded', function () { setTimeout(function () { pintar(guardado); }, 0); });
     red.catch(function () {});     // y la actualiza en segundo plano para la próxima vez
   } else {
     red.then(pintar).catch(function () {
