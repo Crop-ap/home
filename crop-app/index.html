@@ -7,10 +7,13 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="CROP App">
-<meta name="theme-color" content="#0b1f3a">
+<meta name="theme-color" content="#3b2c4e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>CROP - Informes de Gestión</title>
 <style>
-  html,body{margin:0;height:100%;background:#0b1f3a;color:#fff;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  html,body{margin:0;height:100%;background:#3b2c4e;color:#fff;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
   #espera{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;font-size:15px;opacity:.85}
   #espera i{width:34px;height:34px;border:3px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:g 0.9s linear infinite}
   @keyframes g{to{transform:rotate(360deg)}}
@@ -27,7 +30,20 @@
   var URL_APP = 'https://script.google.com/macros/s/AKfycbzUQTCMyJv0DMvDhDzVsgnDjdRJNLOUGwz6mv0Ll4Dl3wZigzseAox3WMkNIvrwvOuP/exec';
   var CLAVE = 'cropapp_html';
 
-  function pintar(html) { document.open(); document.write(html); document.close(); }
+  // Al reemplazar la página se pierden el ícono y los datos para instalarla: se vuelven a poner
+  function ponerIconos() {
+    var h = document.head || document.getElementsByTagName('head')[0];
+    if (!h) return;
+    [['manifest', 'manifest.webmanifest'], ['icon', 'favicon.png'], ['apple-touch-icon', 'apple-touch-icon.png']].forEach(function (x) {
+      var l = document.createElement('link'); l.rel = x[0]; l.href = x[1];
+      if (x[0] === 'icon') l.type = 'image/png';
+      h.appendChild(l);
+    });
+    [['theme-color', '#3b2c4e'], ['apple-mobile-web-app-capable', 'yes'], ['mobile-web-app-capable', 'yes'], ['apple-mobile-web-app-title', 'CROP App']].forEach(function (x) {
+      var m = document.createElement('meta'); m.name = x[0]; m.content = x[1]; h.appendChild(m);
+    });
+  }
+  function pintar(html) { document.open(); document.write(html); document.close(); ponerIconos(); }
   function valido(h) { return typeof h === 'string' && h.length > 5000 && /<html/i.test(h); }
 
   var guardado = null;
